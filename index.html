@@ -1,0 +1,1619 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chase and Run</title>
+    <link rel="icon" href="data:,">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap');
+        
+        body {
+            font-family: "Inter", sans-serif;
+            background: linear-gradient(to right bottom, #06b6d4, #a78bfa);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+            box-sizing: border-box;
+            color: #333;
+        }
+        .game-wrapper {
+            background-color: #ffffff;
+            padding: 35px;
+            border-radius: 20px;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.35);
+            max-width: 900px;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 30px;
+            position: relative;
+        }
+        #gameCanvasContainer {
+            position: relative; 
+            width: 100%;
+            max-width: 800px;
+            padding-bottom: 62.5%;
+            height: 0;
+            overflow: hidden;
+            border: 5px solid #0e7490;
+            border-radius: 15px;
+            background-color: #e0f7f2;
+            margin-left: auto; 
+            margin-right: auto;
+            transition: background-image 0.3s ease-in-out, background-color 0.3s ease-in-out;
+        }
+        canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: block;
+            touch-action: none;
+            background-color: transparent;
+        }
+        .canvas-message {
+            position: absolute;
+            top: 15%;
+            left: 50%;
+            transform: translateX(-50%) scale(0.8);
+            font-size: 2rem;
+            font-weight: 800;
+            color: #a21caf;
+            text-align: center;
+            padding: 15px 30px;
+            border-radius: 15px;
+            background-color: rgba(252, 231, 243, 0.9);
+            box-shadow: 0 8px 25px rgba(162, 28, 175, 0.3);
+            z-index: 10;
+            opacity: 0;
+            transition: opacity 0.3s ease-out, transform 0.3s ease-out;
+            pointer-events: none;
+        }
+        .canvas-message.visible {
+            opacity: 1;
+            transform: translateX(-50%) scale(1);
+        }
+        .canvas-message.fade-out {
+            animation: fadeOutCanvasAnimation 0.5s forwards;
+        }
+        @keyframes fadeOutCanvasAnimation {
+            0% { opacity: 1; transform: translateX(-50%) scale(1); }
+            100% { opacity: 0; transform: translateX(-50%) scale(0.8); }
+        }
+
+        .scoreboard {
+            font-size: 1.3rem;
+            font-weight: 700;
+            text-align: center;
+            width: 100%;
+            display: flex;
+            justify-content: space-evenly;
+            flex-wrap: wrap;
+            gap: 18px;
+            flex-shrink: 0; 
+        }
+        .scoreboard div {
+            padding: 12px 25px;
+            border-radius: 15px;
+            box-shadow: inset 0 3px 6px rgba(0,0,0,0.1);
+            flex: 0 1 calc(33.33% - 12px);
+            min-width: 180px;
+            max-width: calc(33.33% - 12px);
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.1);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            box-sizing: border-box;
+        }
+
+        .scoreboard div:nth-child(4) {
+            flex: 1 1 100%;
+            max-width: 100%;
+        }
+
+        .scoreboard .player1-score {
+            background-color: #dbeafe;
+            color: #1e40af;
+        }
+        .scoreboard .chaser-score {
+            background-color: #fee2e2;
+            color: #b91c1c;
+        }
+        .scoreboard .round-counter {
+            background-color: #f3e8ff;
+            color: #6d28d9;
+        }
+        .scoreboard .timer {
+            background-color: #d1fae5;
+            color: #047857;
+        }
+
+        .button {
+            background: linear-gradient(to right, #3b82f6, #8b5cf6);
+            color: white;
+            padding: 16px 35px;
+            border-radius: 15px;
+            font-weight: 800;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+            box-shadow: 0 8px 20px rgba(59, 130, 246, 0.4);
+            border: none;
+            outline: none;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            position: relative;
+            overflow: hidden;
+        }
+        .button:hover {
+            background: linear-gradient(to right, #2563eb, #7c3aed);
+            transform: translateY(-5px) scale(1.02);
+            box-shadow: 0 12px 30px rgba(59, 130, 246, 0.6);
+        }
+        .button:active {
+            transform: translateY(-1px) scale(0.98);
+            box-shadow: 0 4px 10px rgba(59, 130, 246, 0.5);
+        }
+
+        .button-secondary {
+            background: linear-gradient(to right, #6b7280, #9ca3af);
+            box-shadow: 0 8px 20px rgba(107, 114, 128, 0.3);
+        }
+        .button-secondary:hover {
+            background: linear-gradient(to right, #4b5563, #7f8a9c);
+            transform: translateY(-5px) scale(1.02);
+            box-shadow: 0 12px 30px rgba(107, 114, 128, 0.5);
+        }
+        .button-secondary:active {
+            transform: translateY(-1px) scale(0.98);
+            box-shadow: 0 4px 10px rgba(107, 114, 128, 0.4);
+        }
+
+        #settingsModal .modal-content {
+            width: 450px;
+            max-width: 90%;
+            padding: 20px;
+            gap: 0;
+            max-height: 80vh;
+            overflow-y: auto;
+            background-color: #fefefe;
+            border-radius: 12px;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+        }
+        #settingsModal .modal-content h2 {
+            color: #3b82f6; 
+            font-size: 1.8rem;
+            margin-bottom: 15px; 
+            border-bottom: 1px solid #e0e0e0;
+            padding-bottom: 8px; 
+            width: 100%; 
+            text-align: center;
+        }
+        #settingsModal .modal-content button.close-button {
+            top: 10px; 
+            right: 12px; 
+            font-size: 1.5rem; 
+            color: #888;
+        }
+        #settingsModal .modal-content button.close-button:hover {
+            color: #333;
+        }
+        #settingsModal .modal-content .button-group {
+            display: flex;
+            gap: 15px; 
+            margin-top: 20px; 
+            justify-content: center; 
+            width: 100%; 
+        }
+
+        .settings-section {
+            width: 100%;
+            margin-bottom: 20px;
+        }
+        .settings-section:last-of-type {
+            margin-bottom: 0;
+        }
+        .settings-section-title {
+            text-align: center;
+            color: #4a5568; 
+            font-size: 1.1rem;
+            font-weight: 700;
+            margin-bottom: 10px; 
+            padding-bottom: 5px; 
+            border-bottom: 1px dashed #cccccc;
+            letter-spacing: 0.02em;
+        }
+
+        .settings-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 10px;
+            align-items: center;
+            justify-items: stretch;
+            width: 100%;
+        }
+        @media (min-width: 600px) {
+            #settingsModal .modal-content .settings-section .settings-grid {
+                grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+                gap: 15px;
+            }
+        }
+
+        .setting-group {
+            display: flex;
+            flex-direction: column;
+            align-items: center; 
+            gap: 6px;
+            background-color: #f8f8f8;
+            padding: 12px;
+            border-radius: 8px; 
+            border: 1px solid #e8e8e8;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            transition: all 0.2s ease-in-out;
+        }
+        .setting-group:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1); 
+            border-color: #a78bfa;
+        }
+
+        .settings-grid label {
+            font-weight: 600; 
+            color: #555; 
+            margin-bottom: 0; 
+            font-size: 0.85rem; 
+            text-align: center;
+        }
+        
+        .setting-group select {
+            width: 100%;
+            padding: 6px 10px;
+            border-radius: 6px; 
+            border: 1px solid #ccc; 
+            background-color: #fff; 
+            font-size: 0.8rem; 
+            font-weight: 500; 
+            color: #333;
+            box-shadow: inset 0 1px 2px rgba(0,0,0,0.03); 
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='%236B7280'%3E%3Cpath fill-rule='evenodd' d='M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z' clip-rule='evenodd'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 0.4rem center; 
+            background-size: 1em 1em; 
+            transition: border-color 0.2s, box-shadow 0.2s;
+            cursor: pointer;
+        }
+        .setting-group select:hover {
+            border-color: #a78bfa; 
+        }
+        .setting-group select:focus {
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2); 
+            outline: none;
+        }
+
+        .settings-grid input[type="range"] {
+            width: 90%; 
+            -webkit-appearance: none;
+            height: 6px;
+            background: #e0e0e0; 
+            border-radius: 3px; 
+            outline: none;
+            transition: background 0.2s;
+            cursor: pointer;
+            margin-top: 4px; 
+        }
+        .settings-grid input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: #3b82f6; 
+            box-shadow: 0 1px 4px rgba(59, 130, 246, 0.2); 
+            cursor: grab;
+            transition: background 0.2s, box-shadow 0.2s, transform 0.1s;
+            border: 1px solid #ffffff; 
+        }
+        .settings-grid input[type="range"]::-moz-range-thumb {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: #3b82f6;
+            box-shadow: 0 1px 4px rgba(59, 130, 246, 0.2);
+            cursor: grab;
+            transition: background 0.2s, box-shadow 0.2s, transform 0.1s;
+            border: 1px solid #ffffff;
+        }
+        .settings-grid input[type="range"]:active::-webkit-slider-thumb,
+        .settings-grid input[type="range"]:active::-moz-range-thumb {
+            cursor: grabbing;
+            box-shadow: 0 2px 6px rgba(59, 130, 246, 0.3);
+            transform: scale(1.05); 
+        }
+
+        .slider-value-display {
+            text-align: center;
+            font-size: 0.75rem; 
+            color: #666;
+            margin-top: 4px; 
+            font-weight: 500; 
+            background-color: #f0f0f0; 
+            padding: 3px 6px; 
+            border-radius: 4px; 
+            box-shadow: inset 0 1px 1px rgba(0,0,0,0.02);
+        }
+
+
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.6);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            backdrop-filter: blur(5px);
+        }
+        .modal-content {
+            background-color: #fefefe;
+            padding: 30px; 
+            border-radius: 15px; 
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4); 
+            max-width: 80%; 
+            width: 400px; 
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px; 
+        }
+        .modal-content h2 {
+            font-size: 2rem; 
+            color: #1d4ed8;
+            text-align: center;
+        }
+        .modal-content p {
+            font-size: 1.1rem; 
+            color: #444;
+            text-align: center;
+        }
+
+        #playerControls {
+            font-size: 0.9rem; 
+            padding: 12px; 
+            background-color: #f1f5f9;
+            border-radius: 10px; 
+            box-shadow: inset 0 1px 3px rgba(0,0,0,0.05); 
+        }
+
+        #settingsButton {
+            position: absolute;
+            top: 15px; 
+            right: 15px; 
+            background: linear-gradient(to right, #8b5cf6, #d946ef);
+            color: white;
+            padding: 8px 15px; 
+            border-radius: 8px; 
+            font-weight: 600; 
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+            box-shadow: 0 3px 10px rgba(139, 92, 246, 0.3); 
+            border: none;
+            outline: none;
+            font-size: 0.85rem; 
+            display: flex;
+            align-items: center;
+            gap: 6px; 
+            z-index: 50; 
+        }
+        #settingsButton:hover {
+            background: linear-gradient(to right, #7c3aed, #c026d3);
+            transform: translateY(-2px) scale(1.01); 
+            box-shadow: 0 6px 15px rgba(139, 92, 246, 0.5); 
+        }
+        #settingsButton:active {
+            transform: translateY(-1px) scale(0.99); 
+            box-shadow: 0 1px 5px rgba(139, 92, 246, 0.4); 
+        }
+
+        .bg-theme-default { background-color: #e0f7f2; background-image: none; }
+        .bg-theme-forest { background-image: url('https://placehold.co/1600x1000/a8d8b9/ffffff?text=Forest'); background-size: cover; background-position: center; }
+        .bg-theme-desert { background-image: url('https://placehold.co/1600x1000/f0e68c/8b4513?text=Desert'); background-size: cover; background-position: center; }
+        .bg-theme-space { background-image: url('https://placehold.co/1600x1000/1a1a2e/ffffff?text=Space'); background-size: cover; background-position: center; }
+        .bg-theme-ocean { background-image: url('https://placehold.co/1600x1000/87ceeb/ffffff?text=Ocean'); background-size: cover; background-position: center; }
+
+
+        @media (max-width: 768px) {
+            body {
+                padding: 10px;
+            }
+            .game-wrapper {
+                padding: 15px; 
+                gap: 15px; 
+            }
+            .scoreboard {
+                flex-wrap: wrap; 
+                justify-content: center; 
+                gap: 8px; 
+            }
+            .scoreboard div {
+                flex: 1 1 100%; 
+                max-width: 100%;
+                min-width: unset;
+                padding: 8px 12px; 
+                font-size: 0.9rem; 
+            }
+            .scoreboard div:nth-child(4) {
+                flex: 1 1 100%; 
+                max-width: 100%;
+            }
+            .canvas-message {
+                font-size: 1rem; 
+                padding: 8px 15px; 
+            }
+            .button {
+                padding: 8px 15px; 
+                font-size: 0.75rem; 
+            }
+            .modal-content {
+                padding: 15px; 
+                gap: 10px; 
+            }
+            .modal-content h2 {
+                font-size: 1.2rem; 
+            }
+            .modal-content p {
+                font-size: 0.8rem; 
+            }
+            #settingsModal .modal-content {
+                width: 95%;
+                max-width: none;
+                padding: 10px;
+                max-height: 85vh;
+            }
+            #settingsModal .modal-content h2 {
+                font-size: 1.1rem;
+                margin-bottom: 10px;
+                padding-bottom: 5px;
+            }
+            .settings-section-title {
+                font-size: 0.9rem;
+                margin-top: 15px;
+                margin-bottom: 8px;
+                padding-bottom: 4px;
+            }
+            .settings-grid {
+                grid-template-columns: 1fr;
+                gap: 8px;
+            }
+            .setting-group {
+                padding: 8px;
+                gap: 4px;
+            }
+            .settings-grid label {
+                font-size: 0.75rem;
+            }
+            .setting-group select {
+                padding: 5px 8px;
+                font-size: 0.7rem;
+            }
+            .settings-grid input[type="range"] {
+                height: 5px;
+            }
+            .settings-grid input[type="range"]::-webkit-slider-thumb,
+            .settings-grid input[type="range"]::-moz-range-thumb {
+                width: 14px;
+                height: 14px;
+            }
+            .slider-value-display {
+                font-size: 0.65rem;
+                padding: 2px 5px;
+            }
+            #settingsModal .modal-content .button-group {
+                gap: 10px;
+                margin-top: 15px;
+            }
+            #settingsButton {
+                padding: 6px 12px;
+                font-size: 0.75rem;
+                top: 10px;
+                right: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="game-wrapper">
+        <h1 class="text-4xl font-extrabold text-indigo-700 mb-2">Chase and Run</h1>
+        
+        <button id="settingsButton">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-settings"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.78 1.31a2 2 0 0 0 .73 2.73l.15.08a2 2 0 0 1 1 1.73v.44a2 2 0 0 1-1 1.73l-.15.08a2 2 0 0 0-.73 2.73l.78 1.31a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 1 1.73v.18a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l-.78-1.31a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.73v-.44a2 2 0 0 1 1-1.73l-.15-.08a2 2 0 0 0 .73-2.73l-.78-1.31a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+            <span>Settings</span>
+        </button>
+
+        <div class="scoreboard">
+            <div class="player1-score">🏃 Player 1 (Blue) Score: <span id="blueScore">0</span></div>
+            <div class="chaser-score">🎯 Chaser (Red) Score: <span id="redScore">0</span></div>
+            <div class="round-counter">🔄 Round: <span id="roundCounter">1</span></div>
+            <div class="timer">⏱️ Time: <span id="timer">10.0</span> seconds</div>
+        </div>
+        
+        <div id="gameCanvasContainer" class="bg-theme-default">
+            <canvas id="gameCanvas" width="1600" height="1000"></canvas>
+            <div id="canvasMessage" class="canvas-message hidden"></div>
+        </div>
+
+        <div class="flex gap-6 mt-4 flex-wrap justify-center">
+            <button id="togglePlayButton" class="button">Start Game</button>
+            <button id="resetGameButton" class="button button-secondary">Reset Game</button>
+        </div>
+
+        <div id="playerControls" class="w-full text-center text-gray-600 text-sm mt-4 p-3 bg-gray-100 rounded-lg shadow-inner hidden">
+        </div>
+
+        <div id="gameModal" class="modal-overlay hidden">
+            <div class="modal-content">
+                <h2 id="modalTitle">Welcome!</h2>
+                <p id="modalMessage"></p>
+                <button id="modalActionButton" class="button">Start Game</button>
+            </div>
+        </div>
+
+        <div id="settingsModal" class="modal-overlay hidden">
+            <div class="modal-content">
+                <button class="close-button" id="closeSettingsModal">&times;</button>
+                <h2>Game Settings</h2>
+                
+                <div class="settings-section">
+                    <h3 class="settings-section-title">General Settings</h3>
+                    <div class="settings-grid">
+                        <div class="setting-group">
+                            <label for="gameModeSelect">Game Mode:</label>
+                            <select id="gameModeSelect">
+                                <option value="player1_vs_bot" selected>Player 1 (Blue) vs Bot</option>
+                                <option value="player1_vs_player2">Player 1 (Blue) vs Player 2 (Red)</option>
+                            </select>
+                        </div>
+                        
+                        <div class="setting-group">
+                            <label for="roundDurationSelect">Round Duration:</label>
+                            <select id="roundDurationSelect">
+                                <option value="10" selected>10 seconds</option>
+                                <option value="15">15 seconds</option>
+                                <option value="30">30 seconds</option>
+                                <option value="60">1 minute</option>
+                                <option value="120">2 minutes</option>
+                                <option value="unlimited">Unlimited</option>
+                            </select>
+                        </div>
+
+                        <div class="setting-group">
+                            <label for="timeSpeed">Movement Speed Multiplier:</label>
+                            <select id="timeSpeed">
+                                <option value="0.5">0.5x</option>
+                                <option value="1" selected>1x</option>
+                                <option value="1.5">1.5x</option>
+                                <option value="2">2x</option>
+                                <option value="3">3x</option>
+                                <option value="5">5x</option>
+                                <option value="10">10x</option>
+                                <option value="100">100x</option>
+                                <option value="1000">1000x</option>
+                            </select>
+                        </div>
+
+                        <div class="setting-group">
+                            <label for="backgroundThemeSelect">Game Background:</label>
+                            <select id="backgroundThemeSelect">
+                                <option value="default" selected>Default</option>
+                                <option value="forest">Forest</option>
+                                <option value="desert">Desert</option>
+                                <option value="space">Space</option>
+                                <option value="ocean">Ocean</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="settings-section">
+                    <h3 class="settings-section-title">Chaser Settings</h3>
+                    <div class="settings-grid">
+                        <div class="setting-group">
+                            <label for="numChasersSelect">Number of Chasers:</label>
+                            <select id="numChasersSelect">
+                                <option value="1" selected>1</option>
+                                <option value="2">2</option>
+                                <option value="3">3</option>
+                                <option value="4">4</option>
+                            </select>
+                        </div>
+                        <div id="dynamicChaserSettings" class="settings-grid">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="button-group">
+                    <button id="applySettingsButton" class="button">Apply Settings</button>
+                    <button id="cancelSettingsButton" class="button button-secondary">Cancel</button>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const gameCanvasContainer = document.getElementById('gameCanvasContainer');
+
+        const blueScoreElement = document.getElementById('blueScore');
+        const redScoreElement = document.getElementById('redScore');
+        const roundCounterElement = document.getElementById('roundCounter');
+        const timerElement = document.getElementById('timer');
+        const canvasMessageElement = document.getElementById('canvasMessage');
+        const togglePlayButton = document.getElementById('togglePlayButton');
+        const resetGameButton = document.getElementById('resetGameButton');
+        const timeSpeedSelect = document.getElementById('timeSpeed');
+        const gameModeSelect = document.getElementById('gameModeSelect'); 
+        const numChasersSelect = document.getElementById('numChasersSelect');
+        const dynamicChaserSettingsDiv = document.getElementById('dynamicChaserSettings');
+        const playerControlsDiv = document.getElementById('playerControls');
+        const roundDurationSelect = document.getElementById('roundDurationSelect');
+        const backgroundThemeSelect = document.getElementById('backgroundThemeSelect');
+
+        const gameModal = document.getElementById('gameModal');
+        const modalTitle = document.getElementById('modalTitle');
+        const modalMessage = document.getElementById('modalMessage');
+        const modalActionButton = document.getElementById('modalActionButton');
+
+        const settingsButton = document.getElementById('settingsButton');
+        const settingsModal = document.getElementById('settingsModal');
+        const closeSettingsModalButton = document.getElementById('closeSettingsModal');
+        const applySettingsButton = document.getElementById('applySettingsButton');
+        const cancelSettingsButton = document.getElementById('cancelSettingsButton');
+
+
+        const ARENA_WIDTH = 1600;
+        const ARENA_HEIGHT = 1000;
+        const PLAYER_RADIUS = 40;
+        
+        const PLAYER_MAX_SPEED = 300;
+
+        const DEFAULT_CHASER_SPEED = 200;
+
+        let ROUND_TIME_SETTING = parseFloat(roundDurationSelect.value);
+        const AUTO_NEXT_ROUND_DELAY = 500;
+
+        const MAX_SUB_STEP_DISTANCE = PLAYER_RADIUS * 0.1; 
+
+        let blueX, blueY;
+        let blueDirectionAngle = 0;
+        let blueVelocity = { x: 0, y: 0 };
+        
+        let chasers = [];
+        let blueScore = 0;
+        let redScore = 0;
+        let roundCounter = 1;
+        let timeLeft = ROUND_TIME_SETTING;
+        let gameRunning = false; 
+        let isUserPaused = true;
+        let isUnlimitedTime = false;
+
+        let currentTimeMultiplier = parseFloat(timeSpeedSelect.value); 
+        let gameMode = gameModeSelect.value; 
+        let numChasers = parseInt(numChasersSelect.value); 
+        let currentBackgroundTheme = backgroundThemeSelect.value;
+
+        let gameAnimationFrameId = null;
+        let lastFrameTime = 0;
+
+        let keysPressed = {};
+        let player1InputVector = { x: 0, y: 0 };
+        let player2InputVector = { x: 0, y: 0 };
+        let player2Velocity = { x: 0, y: 0 };
+
+        const ACCELERATION_FORCE = 1500;
+        const DRAG_COEFFICIENT = 5;
+
+        const AI_PREDICTION_TIME = 0.3;
+
+        let collisionEffectTarget = null;
+        let collisionEffectTimer = null;
+
+        let synth, pingPong;
+        let lastSoundTime = 0;
+        let lastCountdownSecond = -1;
+
+        let savedSettings = {};
+
+        function saveCurrentSettings() {
+            savedSettings = {
+                gameMode: gameModeSelect.value,
+                numChasers: numChasersSelect.value,
+                timeSpeed: timeSpeedSelect.value,
+                roundDuration: roundDurationSelect.value,
+                backgroundTheme: backgroundThemeSelect.value,
+                chasersSpeeds: chasers.map((chaser, index) => {
+                    const slider = document.getElementById(`chaserSpeed${index}`);
+                    return slider ? parseFloat(slider.value) : chaser.speed;
+                })
+            };
+        }
+
+        function applySavedSettings() {
+            gameModeSelect.value = savedSettings.gameMode;
+            numChasersSelect.value = savedSettings.numChasers;
+            timeSpeedSelect.value = savedSettings.timeSpeed;
+            roundDurationSelect.value = savedSettings.roundDuration;
+            backgroundThemeSelect.value = savedSettings.backgroundTheme;
+
+            gameModeSelect.dispatchEvent(new Event('change'));
+            numChasersSelect.dispatchEvent(new Event('change'));
+            timeSpeedSelect.dispatchEvent(new Event('change'));
+            roundDurationSelect.dispatchEvent(new Event('change'));
+            backgroundThemeSelect.dispatchEvent(new Event('change'));
+
+            chasers.forEach((chaser, index) => {
+                const slider = document.getElementById(`chaserSpeed${index}`);
+                if (slider && savedSettings.chasersSpeeds[index] !== undefined) {
+                    slider.value = savedSettings.chasersSpeeds[index];
+                    slider.dispatchEvent(new Event('input'));
+                }
+            });
+        }
+
+
+        window.addEventListener('load', () => {
+            synth = new Tone.Synth().toDestination();
+            pingPong = new Tone.PingPongDelay("8n", 0.4).toDestination();
+            synth.connect(pingPong);
+        });
+
+        function playSound(type) {
+            if (!synth || Tone.context.state !== 'running') {
+                console.log(`Tone.js not ready. Cannot play sound: ${type}`);
+                return;
+            }
+
+            const now = Tone.now();
+            if (now - lastSoundTime < 0.05 && type !== 'countdown') {
+                    return;
+            }
+            lastSoundTime = now;
+
+            switch (type) {
+                case 'game_start':
+                    synth.triggerAttackRelease("C4", "8n", now);
+                    synth.triggerAttackRelease("E4", "8n", now + 0.1); 
+                    synth.triggerAttackRelease("G4", "8n", now + 0.2); 
+                    break;
+                case 'chaser_win':
+                    synth.triggerAttackRelease("G3", "8n", now);
+                    synth.triggerAttackRelease("E3", "8n", now + 0.1);
+                    synth.triggerAttackRelease("C3", "8n", now + 0.2);
+                    break;
+                case 'runner_win':
+                    synth.triggerAttackRelease("C5", "8n", now);
+                    synth.triggerAttackRelease("E5", "8n", now + 0.1);
+                    synth.triggerAttackRelease("G5", "8n", now + 0.2);
+                    break;
+                case 'countdown':
+                    const currentSecond = Math.floor(timeLeft);
+                    if (currentSecond !== lastCountdownSecond) {
+                        synth.triggerAttackRelease("C3", "16n", now);
+                        lastCountdownSecond = currentSecond;
+                    }
+                    break;
+                case 'collision':
+                    synth.triggerAttackRelease("C2", "32n", now);
+                    break;
+                case 'reset':
+                    synth.triggerAttackRelease("C4", "16n", now);
+                    setTimeout(() => synth.triggerAttackRelease("G3", "16n", now + 0.1), 10);
+                    break;
+                case 'game_pause':
+                    synth.triggerAttackRelease("F#3", "16n", now);
+                    synth.triggerAttackRelease("D#3", "16n", now + 0.1);
+                    break;
+                case 'settings_open':
+                    synth.triggerAttackRelease("A4", "16n", now);
+                    break;
+                case 'settings_close':
+                    synth.triggerAttackRelease("G4", "16n", now);
+                    break;
+                case 'settings_apply':
+                    synth.triggerAttackRelease("C5", "16n", now);
+                    synth.triggerAttackRelease("E5", "16n", now + 0.05);
+                    break;
+                default:
+                    console.log(`Unknown sound type: ${type}`);
+            }
+        }
+
+        function drawGrid() {
+            ctx.strokeStyle = 'rgba(0,0,0,0.1)';
+            ctx.lineWidth = 1;
+            const gridSize = PLAYER_RADIUS * 2;
+
+            for (let x = 0; x <= ARENA_WIDTH; x += gridSize) {
+                ctx.beginPath();
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x, ARENA_HEIGHT);
+                ctx.stroke();
+            }
+
+            for (let y = 0; y <= ARENA_HEIGHT; y += gridSize) {
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(ARENA_WIDTH, y);
+                ctx.stroke();
+            }
+        }
+
+
+        function drawBlueBot(x, y, angle) {
+            ctx.beginPath();
+            ctx.arc(x, y, PLAYER_RADIUS, 0, Math.PI * 2);
+            ctx.fillStyle = (collisionEffectTarget === 'blue') ? 'white' : '#60a5fa';
+            ctx.fill();
+            ctx.strokeStyle = '#2563eb';
+            ctx.lineWidth = 3;
+            ctx.stroke();
+            ctx.closePath();
+
+            ctx.save();
+            ctx.translate(x, y);
+            ctx.rotate(angle);
+
+            ctx.fillStyle = '#0a2342';
+            ctx.beginPath();
+            ctx.moveTo(PLAYER_RADIUS * 0.7, 0);
+            ctx.lineTo(PLAYER_RADIUS * 0.3, -PLAYER_RADIUS * 0.4);
+            ctx.lineTo(PLAYER_RADIUS * 0.3, PLAYER_RADIUS * 0.4);
+            ctx.closePath();
+            ctx.fill();
+
+            ctx.restore();
+        }
+
+        function drawChaserBot(chaserObj) {
+            ctx.beginPath();
+            ctx.arc(chaserObj.x, chaserObj.y, PLAYER_RADIUS, 0, Math.PI * 2);
+            ctx.fillStyle = (collisionEffectTarget === chaserObj.id) ? 'white' : '#ef4444';
+            ctx.fill();
+            ctx.strokeStyle = '#b91c1c';
+            ctx.lineWidth = 3;
+            ctx.stroke();
+            ctx.closePath();
+
+            ctx.save();
+            ctx.translate(chaserObj.x, chaserObj.y);
+            ctx.rotate(chaserObj.directionAngle);
+
+            ctx.fillStyle = '#4a0c0c';
+            ctx.beginPath();
+            ctx.moveTo(PLAYER_RADIUS * 0.7, 0);
+            ctx.lineTo(PLAYER_RADIUS * 0.3, -PLAYER_RADIUS * 0.4);
+            ctx.lineTo(PLAYER_RADIUS * 0.3, PLAYER_RADIUS * 0.4);
+            ctx.closePath();
+            ctx.fill();
+
+            ctx.restore();
+        }
+
+        function clampX(x) {
+            return Math.max(PLAYER_RADIUS, Math.min(x, ARENA_WIDTH - PLAYER_RADIUS));
+        }
+
+        function clampY(y) {
+            return Math.max(PLAYER_RADIUS, Math.min(y, ARENA_HEIGHT - PLAYER_RADIUS));
+        }
+
+        function getDistance(x1, y1, x2, y2) {
+            const dx = x2 - x1;
+            const dy = y2 - y1;
+            return Math.sqrt(dx * dx + dy * dy);
+        }
+
+        function updateScoreboard() {
+            blueScoreElement.textContent = blueScore;
+            redScoreElement.textContent = redScore;
+            roundCounterElement.textContent = roundCounter;
+            timerElement.textContent = isUnlimitedTime ? '∞' : timeLeft.toFixed(1);
+        }
+
+        function resetBotPositions() {
+            blueX = ARENA_WIDTH / 4;
+            blueY = ARENA_HEIGHT / 2;
+            blueDirectionAngle = 0;
+            blueVelocity = { x: 0, y: 0 };
+
+            chasers = [];
+            for (let i = 0; i < numChasers; i++) {
+                const chaserX = ARENA_WIDTH * 3 / 4;
+                const chaserY = ARENA_HEIGHT / (numChasers + 1) * (i + 1);
+                
+                let chaserIsPlayer = (gameMode === 'player1_vs_player2' && i === 0);
+
+                chasers.push({
+                    x: chaserX,
+                    y: chaserY,
+                    id: `chaser${i + 1}`,
+                    isPlayer: chaserIsPlayer, 
+                    speed: DEFAULT_CHASER_SPEED,
+                    intelligence: 1.0,
+                    directionAngle: Math.PI,
+                    velocity: chaserIsPlayer ? player2Velocity : { x: 0, y: 0 }
+                });
+            }
+            updateChaserSpeedsFromUI();
+        }
+
+        function updateChaserSpeedsFromUI() {
+            chasers.forEach((chaser, index) => {
+                if (!chaser.isPlayer || (gameMode === 'player1_vs_bot')) {
+                    const slider = document.getElementById(`chaserSpeed${index}`);
+                    if (slider) {
+                        chaser.speed = parseFloat(slider.value);
+                    }
+                }
+            });
+        }
+
+        function renderChaserSettings() {
+            dynamicChaserSettingsDiv.innerHTML = '';
+            
+            let hasConfigurableChasers = false;
+
+            chasers.forEach((chaser, index) => {
+                if (!chaser.isPlayer || (gameMode === 'player1_vs_bot')) {
+                    hasConfigurableChasers = true;
+                    const chaserSettingDiv = document.createElement('div');
+                    chaserSettingDiv.className = 'setting-group';
+                    chaserSettingDiv.innerHTML = `
+                        <label for="chaserSpeed${index}">
+                            Chaser Speed ${index + 1}:
+                        </label>
+                        <input type="range" id="chaserSpeed${index}" min="10" max="500" step="10" value="${chaser.speed}">
+                        <span id="chaserSpeed${index}Display" class="slider-value-display">${chaser.speed.toFixed(0)} px/s</span>
+                    `;
+                    dynamicChaserSettingsDiv.appendChild(chaserSettingDiv);
+
+                    const slider = document.getElementById(`chaserSpeed${index}`);
+                    const display = document.getElementById(`chaserSpeed${index}Display`);
+                    slider.addEventListener('input', (event) => {
+                        const newSpeed = parseFloat(event.target.value);
+                        chasers[index].speed = newSpeed;
+                        display.textContent = `${newSpeed.toFixed(0)} px/s`;
+                    });
+                }
+            });
+
+            if (hasConfigurableChasers) {
+                dynamicChaserSettingsDiv.style.display = 'grid';
+            } else {
+                dynamicChaserSettingsDiv.style.display = 'none';
+            }
+        }
+
+        function showCanvasMessage(message, duration = 1500) {
+            canvasMessageElement.textContent = message;
+            canvasMessageElement.classList.remove('hidden');
+            canvasMessageElement.classList.remove('fade-out');
+            canvasMessageElement.classList.add('visible');
+
+            if (duration > 0) {
+                setTimeout(() => {
+                    canvasMessageElement.classList.remove('visible');
+                    canvasMessageElement.classList.add('fade-out');
+                    setTimeout(() => {
+                        canvasMessageElement.classList.add('hidden');
+                        canvasMessageElement.classList.remove('fade-out');
+                    }, 500);
+                }, duration);
+            }
+        }
+
+
+        function startGameLoop() {
+            if (gameRunning) return;
+
+            gameRunning = true;
+            isUserPaused = false; 
+            togglePlayButton.textContent = 'Pause Game';
+            showCanvasMessage('Game Started!', 1500);
+            updatePlayerControlsDisplay(true);
+
+            lastFrameTime = performance.now();
+            gameAnimationFrameId = requestAnimationFrame(gameLoop);
+            playSound('game_start');
+        }
+
+        function stopGameLoop() {
+            if (!gameRunning && gameAnimationFrameId === null) return; 
+
+            gameRunning = false;
+            cancelAnimationFrame(gameAnimationFrameId);
+            gameAnimationFrameId = null;
+            playSound('game_pause');
+        }
+
+        function togglePlayPause() {
+            hideGameModal();
+            hideSettingsModal();
+
+            if (Tone.context.state !== 'running') {
+                Tone.context.resume();
+            }
+
+            if (gameRunning) { 
+                isUserPaused = true;
+                stopGameLoop();
+                togglePlayButton.textContent = 'Resume Game';
+                showCanvasMessage('Game Paused.', 0);
+                updatePlayerControlsDisplay(false);
+            } else { 
+                isUserPaused = false; 
+                if (blueScore === 0 && redScore === 0 && roundCounter === 1 && timeLeft === (isUnlimitedTime ? Number.MAX_SAFE_INTEGER : ROUND_TIME_SETTING)) {
+                    resetBotPositions();
+                }
+                startGameLoop();
+            }
+        }
+
+        function enableGameSettings(enable) {
+            gameModeSelect.disabled = !enable; 
+            numChasersSelect.disabled = !enable; 
+            roundDurationSelect.disabled = !enable;
+            timeSpeedSelect.disabled = !enable; 
+            backgroundThemeSelect.disabled = !enable;
+        }
+
+        function disableChaserSpeedSliders(disable) {
+            const sliders = dynamicChaserSettingsDiv.querySelectorAll('input[type="range"]');
+            sliders.forEach(slider => {
+                slider.disabled = disable;
+            });
+        }
+
+        function updateChaserAI(chaserObj, deltaTime) {
+            let predictedBlueX = blueX + blueVelocity.x * AI_PREDICTION_TIME;
+            let predictedBlueY = blueY + blueVelocity.y * AI_PREDICTION_TIME;
+
+            predictedBlueX = clampX(predictedBlueX);
+            predictedBlueY = clampY(predictedBlueY);
+
+            const dx = predictedBlueX - chaserObj.x;
+            const dy = predictedBlueY - chaserObj.y;
+            const distanceToTarget = getDistance(0, 0, dx, dy);
+
+            let aiInputX = 0;
+            let aiInputY = 0;
+            if (distanceToTarget > 0) {
+                aiInputX = dx / distanceToTarget;
+                aiInputY = dy / distanceToTarget;
+            }
+
+            chaserObj.velocity.x += aiInputX * ACCELERATION_FORCE * deltaTime;
+            chaserObj.velocity.y += aiInputY * ACCELERATION_FORCE * deltaTime;
+
+            chaserObj.velocity.x *= (1 - DRAG_COEFFICIENT * deltaTime);
+            chaserObj.velocity.y *= (1 - DRAG_COEFFICIENT * deltaTime);
+
+            let currentAISpeed = getDistance(0, 0, chaserObj.velocity.x, chaserObj.velocity.y);
+            if (currentAISpeed > chaserObj.speed) {
+                chaserObj.velocity.x = (chaserObj.velocity.x / currentAISpeed) * chaserObj.speed;
+                chaserObj.velocity.y = (chaserObj.velocity.y / currentAISpeed) * chaserObj.speed;
+            } else if (currentAISpeed < 10 && aiInputX === 0 && aiInputY === 0) {
+                chaserObj.velocity.x = 0;
+                chaserObj.velocity.y = 0;
+            }
+
+            if (chaserObj.velocity.x !== 0 || chaserObj.velocity.y !== 0) {
+                chaserObj.directionAngle = Math.atan2(chaserObj.velocity.y, chaserObj.velocity.x);
+            }
+
+            chaserObj.x += chaserObj.velocity.x * deltaTime * currentTimeMultiplier;
+            chaserObj.y += chaserObj.velocity.y * deltaTime * currentTimeMultiplier;
+
+            chaserObj.x = clampX(chaserObj.x);
+            chaserObj.y = clampY(chaserObj.y);
+        }
+
+        function handlePlayer1Movement(deltaTime) {
+            let desiredAccelX = player1InputVector.x * ACCELERATION_FORCE;
+            let desiredAccelY = player1InputVector.y * ACCELERATION_FORCE;
+
+            blueVelocity.x += desiredAccelX * deltaTime;
+            blueVelocity.y += desiredAccelY * deltaTime;
+
+            blueVelocity.x *= (1 - DRAG_COEFFICIENT * deltaTime);
+            blueVelocity.y *= (1 - DRAG_COEFFICIENT * deltaTime);
+
+            let currentSpeed = getDistance(0, 0, blueVelocity.x, blueVelocity.y);
+            if (currentSpeed > PLAYER_MAX_SPEED) {
+                blueVelocity.x = (blueVelocity.x / currentSpeed) * PLAYER_MAX_SPEED;
+                blueVelocity.y = (blueVelocity.y / currentSpeed) * PLAYER_MAX_SPEED;
+            } else if (currentSpeed < 10 && player1InputVector.x === 0 && player1InputVector.y === 0) {
+                blueVelocity.x = 0;
+                blueVelocity.y = 0;
+            }
+
+            if (blueVelocity.x !== 0 || blueVelocity.y !== 0) {
+                blueDirectionAngle = Math.atan2(blueVelocity.y, blueVelocity.x);
+            }
+
+            blueX += blueVelocity.x * deltaTime * currentTimeMultiplier;
+            blueY += blueVelocity.y * deltaTime * currentTimeMultiplier; 
+            
+            blueX = clampX(blueX);
+            blueY = clampY(blueY);
+        }
+
+        function handlePlayer2Movement(chaserObj, deltaTime) {
+            let desiredAccelX = player2InputVector.x * ACCELERATION_FORCE;
+            let desiredAccelY = player2InputVector.y * ACCELERATION_FORCE;
+
+            player2Velocity.x += desiredAccelX * deltaTime;
+            player2Velocity.y += desiredAccelY * deltaTime;
+
+            player2Velocity.x *= (1 - DRAG_COEFFICIENT * deltaTime);
+            player2Velocity.y *= (1 - DRAG_COEFFICIENT * deltaTime);
+
+            let currentSpeed = getDistance(0, 0, player2Velocity.x, player2Velocity.y);
+            if (currentSpeed > PLAYER_MAX_SPEED) {
+                player2Velocity.x = (player2Velocity.x / currentSpeed) * PLAYER_MAX_SPEED;
+                player2Velocity.y = (player2Velocity.y / currentSpeed) * PLAYER_MAX_SPEED;
+            } else if (currentSpeed < 10 && player2InputVector.x === 0 && player2InputVector.y === 0) {
+                player2Velocity.x = 0;
+                player2Velocity.y = 0;
+            }
+
+            if (player2Velocity.x !== 0 || player2Velocity.y !== 0) {
+                chaserObj.directionAngle = Math.atan2(player2Velocity.y, player2Velocity.x);
+            }
+
+            chaserObj.x += player2Velocity.x * deltaTime * currentTimeMultiplier;
+            chaserObj.y += player2Velocity.y * deltaTime * currentTimeMultiplier;
+            
+            chaserObj.x = clampX(chaserObj.x);
+            chaserObj.y = clampY(chaserObj.y); 
+        }
+
+        function checkCollision() {
+            for (const chaser of chasers) {
+                const distance = getDistance(blueX, blueY, chaser.x, chaser.y);
+                if (distance < PLAYER_RADIUS * 2) {
+                    playSound('collision');
+                    return chaser.id;
+                }
+            }
+            return null;
+        }
+
+        function triggerCollisionEffect(targetId) {
+            collisionEffectTarget = targetId;
+            clearTimeout(collisionEffectTimer);
+            collisionEffectTimer = setTimeout(() => {
+                collisionEffectTarget = null;
+            }, 200);
+        }
+
+        function endRound(winner, collidingChaserId = null) {
+            stopGameLoop();
+
+            let message = '';
+            let modalMsg = '';
+
+            if (winner === 'Chaser') {
+                redScore++;
+                message = 'Chaser Wins!';
+                modalMsg = 'The Chaser caught the Runner!';
+                playSound('chaser_win');
+                if (collidingChaserId) {
+                    triggerCollisionEffect('blue');
+                    triggerCollisionEffect(collidingChaserId);
+                }
+            } else {
+                blueScore++;
+                message = 'Runner Wins!';
+                modalMsg = 'The Runner survived!';
+                playSound('runner_win');
+            }
+
+            showCanvasMessage(message, 1500);
+
+            roundCounter++;
+            updateScoreboard();
+
+            setTimeout(() => {
+                if (!isUserPaused) { 
+                    resetBotPositions(); 
+                    timeLeft = isUnlimitedTime ? Number.MAX_SAFE_INTEGER : ROUND_TIME_SETTING;
+                    updateScoreboard(); 
+                    lastCountdownSecond = -1;
+                    startGameLoop();
+                } else {
+                    showGameModal('Round Over!', modalMsg + ' Click "Resume Game" for the next round.', () => { 
+                        resetBotPositions(); 
+                        timeLeft = isUnlimitedTime ? Number.MAX_SAFE_INTEGER : ROUND_TIME_SETTING;
+                        updateScoreboard(); 
+                        lastCountdownSecond = -1;
+                        startGameLoop();
+                    });
+                    ctx.clearRect(0, 0, ARENA_WIDTH, ARENA_HEIGHT); 
+                    drawGrid();
+                    drawBlueBot(blueX, blueY, blueDirectionAngle); 
+                    chasers.forEach(chaser => drawChaserBot(chaser)); 
+                }
+                updatePlayerControlsDisplay(false);
+            }, AUTO_NEXT_ROUND_DELAY); 
+        }
+
+        function gameLoop(currentTime) {
+            if (!gameRunning) return;
+
+            const deltaTime = (currentTime - lastFrameTime) / 1000;
+            lastFrameTime = currentTime;
+
+            ctx.clearRect(0, 0, ARENA_WIDTH, ARENA_HEIGHT);
+            drawGrid();
+
+            handlePlayer1Movement(deltaTime);
+
+            chasers.forEach((chaser, index) => {
+                if (chaser.isPlayer && gameMode === 'player1_vs_player2' && index === 0) {
+                    handlePlayer2Movement(chaser, deltaTime);
+                } else {
+                    updateChaserAI(chaser, deltaTime);
+                }
+                drawChaserBot(chaser);
+            });
+            
+            drawBlueBot(blueX, blueY, blueDirectionAngle);
+
+            const collidedChaserId = checkCollision();
+            if (collidedChaserId) {
+                endRound('Chaser', collidedChaserId);
+                return;
+            }
+
+            if (!isUnlimitedTime) {
+                timeLeft -= deltaTime;
+                if (timeLeft <= 0) {
+                    timeLeft = 0;
+                    endRound('Runner');
+                }
+                if (timeLeft <= 3 && timeLeft > 0) {
+                    playSound('countdown'); 
+                }
+            }
+            updateScoreboard();
+
+            gameAnimationFrameId = requestAnimationFrame(gameLoop);
+        }
+
+        function updatePlayerControlsDisplay(show) {
+            if (show) {
+                playerControlsDiv.classList.remove('hidden');
+                if (gameMode === 'player1_vs_bot') {
+                    playerControlsDiv.innerHTML = 'Controls: <strong>Player 1 (Blue)</strong>: WASD';
+                } else if (gameMode === 'player1_vs_player2') {
+                    playerControlsDiv.innerHTML = 'Controls: <strong>Player 1 (Blue)</strong>: WASD &nbsp;|&nbsp; <strong>Player 2 (Red)</strong>: Arrows';
+                }
+            } else {
+                playerControlsDiv.classList.add('hidden');
+            }
+        }
+
+        function applyBackgroundTheme(theme) {
+            gameCanvasContainer.classList.forEach(className => {
+                if (className.startsWith('bg-theme-')) {
+                    gameCanvasContainer.classList.remove(className);
+                }
+            });
+            gameCanvasContainer.classList.add(`bg-theme-${theme}`);
+        }
+
+
+        function resetGame(showWelcomeModal = false) {
+            stopGameLoop();
+            isUserPaused = true;
+
+            blueScore = 0;
+            redScore = 0;
+            roundCounter = 1;
+            
+            isUnlimitedTime = (roundDurationSelect.value === 'unlimited');
+            if (!isUnlimitedTime) {
+                ROUND_TIME_SETTING = parseFloat(roundDurationSelect.value);
+            }
+            timeLeft = isUnlimitedTime ? Number.MAX_SAFE_INTEGER : ROUND_TIME_SETTING;
+
+
+            gameMode = gameModeSelect.value;
+            numChasers = parseInt(numChasersSelect.value);
+            currentBackgroundTheme = backgroundThemeSelect.value;
+
+            timeSpeedSelect.value = "1";
+            currentTimeMultiplier = 1.0;
+            
+            keysPressed = {};
+            player1InputVector = { x: 0, y: 0 };
+            player2InputVector = { x: 0, y: 0 };
+            blueVelocity = { x: 0, y: 0 };
+            player2Velocity = { x: 0, y: 0 };
+
+            resetBotPositions();
+            renderChaserSettings();
+            updateScoreboard();
+            canvasMessageElement.classList.add('hidden');
+            applyBackgroundTheme(currentBackgroundTheme);
+            
+            togglePlayButton.textContent = 'Start Game';
+            updatePlayerControlsDisplay(false);
+
+            ctx.clearRect(0, 0, ARENA_WIDTH, ARENA_HEIGHT); 
+            drawGrid();
+            drawBlueBot(blueX, blueY, blueDirectionAngle);
+            chasers.forEach(chaser => drawChaserBot(chaser));
+            
+            if (showWelcomeModal) {
+                showGameModal('Welcome!', 'Use WASD when playing against the Bot. Use WASD + Arrow Keys when playing PvP.', () => { 
+                    hideGameModal(); 
+                    togglePlayPause();
+                });
+            }
+            playSound('reset');
+            lastCountdownSecond = -1;
+        }
+
+        function showGameModal(title, message, actionCallback) {
+            modalTitle.textContent = title;
+            modalMessage.textContent = message;
+            modalActionButton.textContent = (title === 'Welcome!') ? 'Start Game' : 'Resume Game';
+            modalActionButton.onclick = () => {
+                actionCallback();
+                hideGameModal(); 
+            };
+            gameModal.classList.remove('hidden');
+        }
+
+        function hideGameModal() {
+            gameModal.classList.add('hidden');
+        }
+
+        function showSettingsModal() {
+            if (!isUserPaused) {
+                togglePlayPause();
+            }
+            saveCurrentSettings();
+            gameModeSelect.value = gameMode;
+            numChasersSelect.value = numChasers;
+            timeSpeedSelect.value = currentTimeMultiplier;
+            roundDurationSelect.value = isUnlimitedTime ? 'unlimited' : ROUND_TIME_SETTING.toString();
+            backgroundThemeSelect.value = currentBackgroundTheme;
+            
+            resetBotPositions();
+            renderChaserSettings();
+
+            settingsModal.classList.remove('hidden');
+            playSound('settings_open');
+        }
+
+        function hideSettingsModal() {
+            settingsModal.classList.add('hidden');
+            playSound('settings_close');
+        }
+
+        togglePlayButton.addEventListener('click', togglePlayPause);
+        
+        resetGameButton.addEventListener('click', () => resetGame(true));
+
+        settingsButton.addEventListener('click', showSettingsModal);
+        closeSettingsModalButton.addEventListener('click', () => {
+            if (isUserPaused) {
+                applySavedSettings();
+            }
+            hideSettingsModal();
+        });
+        applySettingsButton.addEventListener('click', () => {
+            gameMode = gameModeSelect.value;
+            numChasers = parseInt(numChasersSelect.value);
+            currentTimeMultiplier = parseFloat(timeSpeedSelect.value);
+            currentBackgroundTheme = backgroundThemeSelect.value;
+
+            isUnlimitedTime = (roundDurationSelect.value === 'unlimited');
+            if (!isUnlimitedTime) {
+                ROUND_TIME_SETTING = parseFloat(roundDurationSelect.value);
+            }
+            
+            if (!gameRunning || isUserPaused) {
+                timeLeft = isUnlimitedTime ? Number.MAX_SAFE_INTEGER : ROUND_TIME_SETTING;
+            }
+            lastCountdownSecond = -1;
+
+            resetBotPositions();
+            updateScoreboard();
+            applyBackgroundTheme(currentBackgroundTheme);
+            
+            playSound('settings_apply');
+            hideSettingsModal();
+            if (!gameRunning && isUserPaused) {
+                showCanvasMessage('Settings Applied.', 1500);
+            }
+        });
+        cancelSettingsButton.addEventListener('click', () => {
+            applySavedSettings();
+            hideSettingsModal();
+        });
+
+
+        gameModeSelect.addEventListener('change', () => {
+            resetBotPositions();
+            renderChaserSettings();
+        });
+
+        numChasersSelect.addEventListener('change', () => {
+            resetBotPositions();
+            renderChaserSettings();
+        });
+
+        roundDurationSelect.addEventListener('change', () => {
+        });
+
+        timeSpeedSelect.addEventListener('change', () => {
+        });
+
+        backgroundThemeSelect.addEventListener('change', (event) => {
+            applyBackgroundTheme(event.target.value);
+        });
+
+        document.addEventListener('keydown', (e) => {
+            if (gameMode === 'player1_vs_player2' && 
+                (e.key === 'ArrowUp' || e.key === 'ArrowDown' || e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {
+                e.preventDefault();
+            }
+            keysPressed[e.key.toLowerCase()] = true;
+
+            if (e.key.toLowerCase() === 'w') player1InputVector.y = -1;
+            else if (e.key.toLowerCase() === 's') player1InputVector.y = 1;
+            
+            if (e.key.toLowerCase() === 'a') player1InputVector.x = -1;
+            else if (e.key.toLowerCase() === 'd') player1InputVector.x = 1;
+
+            if (gameMode === 'player1_vs_player2') {
+                if (e.key === 'ArrowUp') player2InputVector.y = -1;
+                else if (e.key === 'ArrowDown') player2InputVector.y = 1;
+                
+                if (e.key === 'ArrowLeft') player2InputVector.x = -1;
+                else if (e.key === 'ArrowRight') player2InputVector.x = 1;
+            }
+        });
+        document.addEventListener('keyup', (e) => {
+            keysPressed[e.key.toLowerCase()] = false;
+
+            if (e.key.toLowerCase() === 'w' && !keysPressed['s']) player1InputVector.y = 0;
+            if (e.key.toLowerCase() === 's' && !keysPressed['w']) player1InputVector.y = 0;
+            if (e.key.toLowerCase() === 'a' && !keysPressed['d']) player1InputVector.x = 0;
+            if (e.key.toLowerCase() === 'd' && !keysPressed['a']) player1InputVector.x = 0;
+
+            if (gameMode === 'player1_vs_player2') {
+                if (e.key === 'ArrowUp' && !keysPressed['arrowdown']) player2InputVector.y = 0;
+                if (e.key === 'ArrowDown' && !keysPressed['arrowup']) player2InputVector.y = 0;
+                if (e.key === 'ArrowLeft' && !keysPressed['arrowright']) player2InputVector.x = 0;
+                if (e.key === 'ArrowRight' && !keysPressed['arrowleft']) player2InputVector.x = 0;
+            }
+        });
+
+        let touchStartX = 0;
+        let touchStartY = 0;
+        let player1TouchId = null;
+        let player2TouchId = null;
+
+        canvas.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            if (!gameRunning && !isUserPaused) return;
+
+            if (Tone.context.state !== 'running') {
+                Tone.context.resume();
+            }
+
+            for (let i = 0; i < e.changedTouches.length; i++) {
+                const touch = e.changedTouches[i];
+                const rect = canvas.getBoundingClientRect();
+                const touchX = (touch.clientX - rect.left) / rect.width * ARENA_WIDTH;
+                const touchY = (touch.clientY - rect.top) / rect.height * ARENA_HEIGHT;
+
+                if (player1TouchId === null && touchX < ARENA_WIDTH / 2) {
+                    player1TouchId = touch.identifier;
+                    touchStartX = touchX;
+                    touchStartY = touchY;
+                } else if (gameMode === 'player1_vs_player2' && player2TouchId === null && touchX >= ARENA_WIDTH / 2) {
+                    player2TouchId = touch.identifier;
+                }
+            }
+        });
+
+        canvas.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+            if (!gameRunning && !isUserPaused) return;
+
+            for (let i = 0; i < e.changedTouches.length; i++) {
+                const touch = e.changedTouches[i];
+                const rect = canvas.getBoundingClientRect();
+                const touchX = (touch.clientX - rect.left) / rect.width * ARENA_WIDTH;
+                const touchY = (touch.clientY - rect.top) / rect.height * ARENA_HEIGHT;
+
+                if (touch.identifier === player1TouchId) {
+                    const deltaX = touchX - touchStartX;
+                    const deltaY = touchY - touchStartY;
+                    const magnitude = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+
+                    if (magnitude > 10) {
+                        player1InputVector.x = deltaX / magnitude;
+                        player1InputVector.y = deltaY / magnitude;
+                    } else {
+                        player1InputVector.x = 0;
+                        player1InputVector.y = 0;
+                    }
+                } else if (touch.identifier === player2TouchId && gameMode === 'player1_vs_player2') {
+                    const chaser = chasers.find(c => c.isPlayer);
+                    if (chaser) {
+                        const targetX = touchX;
+                        const targetY = touchY;
+                        const dx = targetX - chaser.x;
+                        const dy = targetY - chaser.y;
+                        const distance = getDistance(0, 0, dx, dy);
+
+                        if (distance > 10) {
+                            player2InputVector.x = dx / distance;
+                            player2InputVector.y = dy / distance;
+                        } else {
+                            player2InputVector.x = 0;
+                            player2InputVector.y = 0;
+                        }
+                    }
+                }
+            }
+        });
+
+        canvas.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            if (!gameRunning && !isUserPaused) return;
+
+            for (let i = 0; i < e.changedTouches.length; i++) {
+                const touch = e.changedTouches[i];
+                if (touch.identifier === player1TouchId) {
+                    player1InputVector.x = 0;
+                    player1InputVector.y = 0;
+                    player1TouchId = null;
+                } else if (touch.identifier === player2TouchId) {
+                    player2InputVector.x = 0;
+                    player2InputVector.y = 0;
+                    player2TouchId = null;
+                }
+            }
+        });
+
+        window.onload = function() {
+            resetGame(true);
+            const resizeCanvas = () => {
+                canvas.width = ARENA_WIDTH;
+                canvas.height = ARENA_HEIGHT;
+            };
+
+            resizeCanvas();
+        };
+    </script>
+</body>
+</html>
